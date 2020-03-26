@@ -36,27 +36,24 @@ const userSchema = mongoose.Schema({
 })
 
 
-// mongoose method로 user 모델을 save하기 전에 함수를 실행하고 내보낸다.
-userSchema.pre('save', function( next ) {
-    // user 비밀번호를 가져온다.
-    let user = this;
-    // password가 변환될때만 bcrypt를 이용해 암호화 해준다.
+userSchema.pre('save', function (next) {
+    var user = this;
     if (user.isModified('password')) {
-        // 비밀번호를 암호화 시킨다.  
-        bcrypt.genSalt(saltRounds, function(err, salt){
-            if(err) return next(err)
-        
-            // 가져온 비밀번호를 hash로 바꿔준다
-            bcrypt.hash(user.password, salt, function(err, hash) {
-                if(err) return next(err)
+        //비밀번호를 암호화 시킨다.
+        bcrypt.genSalt(saltRounds, function (err, salt) {
+            if (err) return next(err)
+
+            bcrypt.hash(user.password, salt, function (err, hash) {
+                if (err) return next(err)
                 user.password = hash
                 next()
+            })
         })
-    }) 
     } else {
         next()
     }
 })
+
 
 userSchema.methods.comparePassword = function (plainPassword, cb) {
 
@@ -84,6 +81,19 @@ userSchema.methods.generateToken = function (cb) {
     })
 }
 
+userSchema.statics.findByToken = function(token, cb) {
+    var user = this;
+    // user._id + ''  = token
+    //토큰을 decode 한다. 
+    jwt.verify(token, 'secretToken', function (err, decoded) {
+        //유저 아이디를 이용해서 유저를 찾은 다음에 
+        //클라이언트에서 가져온 token과 DB에 보관된 토큰이 일치하는지 확인
+        user.findOne({ "_id": decoded, "token": token }, function (err, user) {
+            if (err) return cb(err);
+            cb(null, user)
+        })
+    })
+}
 
 
 
